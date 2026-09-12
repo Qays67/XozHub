@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XozHub.GPT — Assistant IA pour le terminal Windows</title>
+<meta name="description" content="XozHub.GPT : assistant de code IA dans ton invite de commandes Windows. Claude Sonnet, zero pub, installation en une commande.">
+<meta name="theme-color" content="#05060a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%92%80</text></svg>">
+<style>
+  :root{
+    --bg:#05060a;
+    --bg2:#080c14;
+    --cyan:#00f0ff;
+    --cyan-dim:#0a7f8c;
+    --magenta:#ff2fd0;
+    --magenta-dim:#8c1a72;
+    --text:#cfefff;
+    --muted:#5f7d8c;
+    --line:rgba(0,240,255,.18);
+    --green:#5cff8f;
+    --mono:"Cascadia Mono","Consolas","SFMono-Regular","Menlo",monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:var(--mono);
+    font-size:15px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  #matrix{position:fixed;inset:0;z-index:0;opacity:.16;pointer-events:none}
+  .scan{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 3px,rgba(0,0,0,.28) 3px 4px);
+    mix-blend-mode:multiply;}
+  .vign{position:fixed;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 0%,rgba(0,240,255,.07),transparent 60%),radial-gradient(ellipse at 90% 90%,rgba(255,47,208,.08),transparent 55%);}
+  .wrap{position:relative;z-index:2;max-width:960px;margin:0 auto;padding:0 18px}
+
+  /* ---------- barre du haut ---------- */
+  header.bar{position:sticky;top:0;z-index:20;backdrop-filter:blur(8px);
+    background:rgba(5,6,10,.82);border-bottom:1px solid var(--line)}
+  .bar-in{max-width:960px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .logo{font-weight:700;color:var(--cyan);text-shadow:0 0 12px rgba(0,240,255,.55);letter-spacing:1px}
+  .logo b{color:var(--magenta);text-shadow:0 0 12px rgba(255,47,208,.55)}
+  .bar nav{margin-left:auto;display:flex;gap:16px;flex-wrap:wrap}
+  .bar nav a{color:var(--muted);text-decoration:none;font-size:13px;transition:.2s}
+  .bar nav a:hover{color:var(--cyan);text-shadow:0 0 10px rgba(0,240,255,.6)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:70px 0 30px;text-align:center}
+  .kicker{display:inline-block;font-size:12px;letter-spacing:2px;color:var(--magenta);
+    border:1px solid var(--magenta-dim);border-radius:2px;padding:3px 10px;margin-bottom:22px;
+    box-shadow:0 0 22px rgba(255,47,208,.16) inset}
+  h1.glitch{font-size:clamp(32px,8vw,66px);margin:0 0 6px;letter-spacing:2px;position:relative;
+    color:#eafcff;text-shadow:0 0 18px rgba(0,240,255,.45)}
+  h1.glitch::before,h1.glitch::after{content:attr(data-t);position:absolute;left:0;width:100%;top:0}
+  h1.glitch::before{color:var(--cyan);clip-path:inset(0 0 62% 0);animation:gl1 3.2s infinite steps(2)}
+  h1.glitch::after{color:var(--magenta);clip-path:inset(58% 0 0 0);animation:gl2 2.6s infinite steps(2)}
+  @keyframes gl1{0%,92%,100%{transform:none;opacity:0}93%{transform:translate(-3px,-2px);opacity:.9}96%{transform:translate(2px,1px);opacity:.7}}
+  @keyframes gl2{0%,90%,100%{transform:none;opacity:0}91%{transform:translate(3px,2px);opacity:.9}95%{transform:translate(-2px,-1px);opacity:.7}}
+  .sub{color:var(--muted);max-width:640px;margin:14px auto 0;font-size:14.5px}
+  .typed{color:var(--cyan);border-right:2px solid var(--cyan);padding-right:3px;animation:blink 1s step-end infinite}
+  @keyframes blink{50%{border-color:transparent}}
+
+  /* ---------- bloc commande ---------- */
+  .cmdbox{border:1px solid var(--line);background:linear-gradient(180deg,rgba(0,240,255,.045),rgba(0,0,0,.35));
+    border-radius:4px;margin:26px 0;box-shadow:0 0 30px rgba(0,240,255,.06)}
+  .cmdtop{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .d1{background:var(--magenta)} .d2{background:#ffd12f} .d3{background:var(--cyan)}
+  .cmdtop span.t{margin-left:6px}
+  .cmdrow{display:flex;align-items:flex-start;gap:10px;padding:14px 12px}
+  .cmdrow code{flex:1;color:var(--green);word-break:break-all;font-size:13px;line-height:1.6}
+  .cmdrow code .p{color:var(--magenta)}
+  button.copy{background:transparent;color:var(--cyan);border:1px solid var(--cyan-dim);border-radius:3px;
+    padding:6px 12px;font-family:var(--mono);font-size:12px;cursor:pointer;transition:.18s;white-space:nowrap}
+  button.copy:hover{background:rgba(0,240,255,.12);box-shadow:0 0 16px rgba(0,240,255,.28)}
+  button.copy.ok{color:var(--green);border-color:var(--green)}
+
+  /* ---------- sections ---------- */
+  section{padding:52px 0;border-top:1px solid rgba(0,240,255,.08)}
+  h2.sec{font-size:20px;margin:0 0 6px;color:var(--cyan);letter-spacing:1.5px;text-shadow:0 0 14px rgba(0,240,255,.35)}
+  h2.sec::before{content:"# ";color:var(--magenta);text-shadow:0 0 14px rgba(255,47,208,.5)}
+  .sec-sub{color:var(--muted);font-size:13.5px;margin:0 0 26px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .card{border:1px solid var(--line);border-radius:4px;padding:18px;background:rgba(0,240,255,.022);transition:.22s}
+  .card:hover{border-color:var(--cyan-dim);background:rgba(0,240,255,.06);transform:translateY(-2px)}
+  .card .ico{font-size:20px;margin-bottom:8px;display:block}
+  .card h3{margin:0 0 6px;font-size:14.5px;color:#eafcff}
+  .card p{margin:0;color:var(--muted);font-size:13px}
+
+  /* ---------- étapes ---------- */
+  .step{display:flex;gap:18px;padding:20px 0;border-bottom:1px dashed rgba(0,240,255,.12)}
+  .step:last-child{border-bottom:0}
+  .num{flex:0 0 42px;height:42px;border:1px solid var(--magenta-dim);border-radius:3px;color:var(--magenta);
+    display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 20px rgba(255,47,208,.14) inset}
+  .step h3{margin:2px 0 6px;font-size:15px;color:var(--cyan)}
+  .step p{margin:0 0 10px;color:var(--muted);font-size:13.5px}
+  kbd{background:rgba(0,240,255,.1);border:1px solid var(--line);border-radius:3px;padding:1px 6px;font-size:12.5px;color:var(--cyan)}
+
+  /* ---------- tableau ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border:1px solid rgba(0,240,255,.12);padding:11px 13px;text-align:left}
+  th{background:rgba(0,240,255,.06);color:var(--cyan);font-weight:600;letter-spacing:.5px}
+  td.no{color:#ff6b6b} td.yes{color:var(--green)}
+  tr:hover td{background:rgba(0,240,255,.03)}
+
+  /* ---------- terminal démo ---------- */
+  .term{border:1px solid var(--line);border-radius:4px;background:#03040a;overflow:hidden;box-shadow:0 0 40px rgba(0,240,255,.07)}
+  .term-body{padding:16px;font-size:13px;line-height:1.7;height:320px;overflow:hidden}
+  .term-body .c{color:var(--cyan)} .term-body .m{color:var(--magenta)}
+  .term-body .g{color:var(--green)} .term-body .d{color:var(--muted)}
+  .term-body .u{color:#eafcff}
+
+  /* ---------- détails / faq ---------- */
+  details{border:1px solid var(--line);border-radius:4px;margin-bottom:9px;background:rgba(0,240,255,.02)}
+  details[open]{border-color:var(--cyan-dim)}
+  summary{cursor:pointer;padding:13px 15px;font-size:14px;color:#eafcff;list-style:none;display:flex;gap:10px;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸";color:var(--magenta);transition:.2s}
+  details[open] summary::before{transform:rotate(90deg)}
+  details p{margin:0;padding:0 15px 15px 33px;color:var(--muted);font-size:13.5px}
+
+  footer{padding:40px 0 60px;text-align:center;color:var(--muted);font-size:12.5px;border-top:1px solid rgba(0,240,255,.08)}
+  footer .links{margin-bottom:10px;display:flex;gap:18px;justify-content:center;flex-wrap:wrap}
+  footer a{color:var(--muted);text-decoration:none} footer a:hover{color:var(--cyan)}
+
+  .note{border-left:2px solid var(--magenta-dim);background:rgba(255,47,208,.05);padding:12px 15px;
+    color:var(--muted);font-size:13px;border-radius:0 4px 4px 0;margin:18px 0}
+  .note b{color:var(--magenta)}
+  ::selection{background:rgba(255,47,208,.35)}
+  @media(max-width:560px){.step{flex-direction:column;gap:10px}.term-body{height:260px}}
+</style>
+</head>
+<body>
+<canvas id="matrix"></canvas>
+<div class="scan"></div>
+<div class="vign"></div>
+
+<header class="bar">
+  <div class="bar-in">
+    <span class="logo">Xoz<b>Hub</b>.GPT</span>
+    <nav>
+      <a href="#install">Installation</a>
+      <a href="#pourquoi">Pourquoi</a>
+      <a href="#compare">Comparaison</a>
+      <a href="#commandes">Commandes</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <span class="kicker">CLAUDE SONNET · TERMINAL WINDOWS</span>
+    <h1 class="glitch" data-t="XOZHUB.GPT">XOZHUB.GPT</h1>
+    <p class="sub">Ton assistant IA dans l'invite de commandes. Il lit, il code, il explique.
+      <span class="typed" id="typed"></span></p>
+  </div>
+
+  <div class="cmdbox">
+    <div class="cmdtop">
+      <span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+      <span class="t">cmd.exe — installation en une commande</span>
+    </div>
+    <div class="cmdrow">
+      <code id="maincmd"><span class="p">&gt;</span> curl -fsSL https://raw.githubusercontent.com/Qays67/XozHub/main/install.bat -o "%TEMP%\xozhub-install.bat" &amp;&amp; "%TEMP%\xozhub-install.bat"</code>
+      <button class="copy" data-copy="maincmd">COPIER</button>
+    </div>
+  </div>
+
+  <div class="term">
+    <div class="cmdtop">
+      <span class="dot d1"></span><span class="dot d2"></span><span class="dot d3"></span>
+      <span class="t">C:\Users\vous&gt; xozhub</span>
+    </div>
+    <div class="term-body" id="demo"></div>
+  </div>
+
+  <!-- ===================== INSTALLATION ===================== -->
+  <section id="install">
+    <h2 class="sec">Installer en 3 étapes</h2>
+    <p class="sec-sub">De zéro au premier message, en moins de deux minutes.</p>
+
+    <div class="step">
+      <div class="num">1</div>
+      <div>
+        <h3>Ouvre une invite de commandes</h3>
+        <p>Appuie sur <kbd>Win</kbd>, tape <kbd>cmd</kbd>, puis <kbd>Entrée</kbd>.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">2</div>
+      <div>
+        <h3>Colle la commande d'installation</h3>
+        <p>Copie la ligne ci-dessous, colle-la dans le cmd et appuie sur <kbd>Entrée</kbd> :</p>
+        <div class="cmdbox" style="margin:0 0 10px">
+          <div class="cmdrow">
+            <code id="installcmd"><span class="p">&gt;</span> curl -fsSL https://raw.githubusercontent.com/Qays67/XozHub/main/install.bat -o "%TEMP%\xozhub-install.bat" &amp;&amp; "%TEMP%\xozhub-install.bat"</code>
+            <button class="copy" data-copy="installcmd">COPIER</button>
+          </div>
+        </div>
+        <p>Le script télécharge XozHub, l'installe dans <code>C:\Users\vous\XozHub</code>
+           et ajoute le dossier au <b>PATH</b> tout seul. Tu verras « TERMINE ! » à la fin.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="num">3</div>
+      <div>
+        <h3>Ouvre un nouveau cmd et lance</h3>
+        <p>Ferme la fenêtre, rouvres-en une nouvelle (pour que le PATH soit pris en compte), puis :</p>
+        <div class="cmdbox" style="margin:0 0 10px">
+          <div class="cmdrow">
+            <code id="runcmd"><span class="p">&gt;</span> xozhub</code>
+            <button class="copy" data-copy="runcmd">COPIER</button>
+          </div>
+        </div>
+        <p>Au premier lancement, XozHub te demande ta clé API (Claude). Elle est enregistrée
+           une seule fois dans <code>%USERPROFILE%\.xozhub\config.json</code>.</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>Une erreur pendant l'installation ?</b> <code>curl : (22) ... 404</code> = le
+      fichier n'a pas pu être téléchargé (pas encore en ligne, proxy ou antivirus) :
+      essaie la <a href="#commandes" style="color:var(--cyan)">méthode PowerShell</a>.
+      <code>'curl' n'est pas reconnu</code> = curl.exe absent : la méthode PowerShell fonctionne
+      toujours. Et dans tous les cas, ouvre un <b>nouveau</b> cmd avant de taper
+      <code>xozhub</code>.
+    </div>
+
+    <div class="note">
+      <b>Il faut une clé API.</b> XozHub est le client, le modèle tourne chez le fournisseur.
+      Crée une clé sur <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" style="color:var(--cyan)">console.anthropic.com</a>.
+      Tu peux aussi brancher n'importe quelle API compatible OpenAI avec <code>/setup</code>.
+    </div>
+  </section>
+
+  <!-- ===================== POURQUOI ===================== -->
+  <section id="pourquoi">
+    <h2 class="sec">Pourquoi XozHub ?</h2>
+    <p class="sec-sub">Un vrai assistant de code, sans quitter le terminal.</p>
+    <div class="grid">
+      <div class="card">
+        <span class="ico">◈</span>
+        <h3>Claude Sonnet</h3>
+        <p>Un modèle de pointe pour le code, le débogage et les explications techniques.</p>
+      </div>
+      <div class="card">
+        <span class="ico">⚡</span>
+        <h3>Une commande</h3>
+        <p>Copie, colle, ouvre un nouveau cmd, tape <b>xozhub</b>. C'est tout.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🚫</span>
+        <h3>Aucune publicité</h3>
+        <p>Pas de bannières, pas de « sponsorisé », rien dans les réponses.</p>
+      </div>
+      <div class="card">
+        <span class="ico">▣</span>
+        <h3>Zéro dépendance</h3>
+        <p>Batch + PowerShell, déjà présents sur Windows. Pas de Node, pas de Python.</p>
+      </div>
+      <div class="card">
+        <span class="ico">⌘</span>
+        <h3>Réponses en direct</h3>
+        <p>Streaming token par token, rendu lisible avec coloration des blocs de code.</p>
+      </div>
+      <div class="card">
+        <span class="ico">🛡</span>
+        <h3>Ta clé, ta machine</h3>
+        <p>Rien ne passe par un serveur tiers. Ta clé reste dans ton dossier utilisateur.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COMPARAISON ===================== -->
+  <section id="compare">
+    <h2 class="sec">La différence</h2>
+    <p class="sec-sub">XozHub.GPT face aux assistants dans le navigateur.</p>
+    <table>
+      <thead>
+        <tr><th>Critère</th><th>Assistant web</th><th>XozHub.GPT</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Publicités</td><td class="no">Bannières + dans les réponses</td><td class="yes">Aucune</td></tr>
+        <tr><td>Où ça tourne</td><td class="no">Onglet navigateur</td><td class="yes">Ton terminal</td></tr>
+        <tr><td>Installation</td><td class="no">Compte + connexion à chaque fois</td><td class="yes">1 commande, 1 connexion</td></tr>
+        <tr><td>Mode</td><td class="no">Clair, coloré, distrayant</td><td class="yes">Interface hacker cyan/magenta</td></tr>
+        <tr><td>Dépendances</td><td class="no">Navigateur à jour</td><td class="yes">PowerShell, déjà installé</td></tr>
+        <tr><td>Historique</td><td class="no">Synchronisé sur leurs serveurs</td><td class="yes">En mémoire, chez toi</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===================== COMMANDES ===================== -->
+  <section id="commandes">
+    <h2 class="sec">Toutes les commandes</h2>
+    <p class="sec-sub">Prêtes à copier-coller.</p>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Installer — méthode curl (recommandée)</span></div>
+      <div class="cmdrow"><code id="c1">curl -fsSL https://raw.githubusercontent.com/Qays67/XozHub/main/install.bat -o "%TEMP%\xozhub-install.bat" &amp;&amp; "%TEMP%\xozhub-install.bat"</code><button class="copy" data-copy="c1">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Installer — méthode PowerShell</span></div>
+      <div class="cmdrow"><code id="c2">powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Qays67/XozHub/main/install.ps1 | iex"</code><button class="copy" data-copy="c2">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Lancer le chat</span></div>
+      <div class="cmdrow"><code id="c3">xozhub</code><button class="copy" data-copy="c3">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Question unique (sans entrer dans le chat)</span></div>
+      <div class="cmdrow"><code id="c4">xozhub "explique-moi cette expression reguliere : ^(?:\d{3})-(\d{4})$"</code><button class="copy" data-copy="c4">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ (Re)configurer la clé API et le modèle</span></div>
+      <div class="cmdrow"><code id="c5">xozhub setup</code><button class="copy" data-copy="c5">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Mettre à jour</span></div>
+      <div class="cmdrow"><code id="c6">curl -fsSL https://raw.githubusercontent.com/Qays67/XozHub/main/install.bat -o "%TEMP%\xozhub-install.bat" &amp;&amp; "%TEMP%\xozhub-install.bat"</code><button class="copy" data-copy="c6">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Désinstaller</span></div>
+      <div class="cmdrow"><code id="c7">powershell -NoProfile -ExecutionPolicy Bypass -c "irm https://raw.githubusercontent.com/Qays67/XozHub/main/uninstall.ps1 | iex"</code><button class="copy" data-copy="c7">COPIER</button></div>
+    </div>
+
+    <div class="cmdbox">
+      <div class="cmdtop"><span class="t">▸ Vérifier la version</span></div>
+      <div class="cmdrow"><code id="c8">xozhub --version</code><button class="copy" data-copy="c8">COPIER</button></div>
+    </div>
+
+    <p class="sec-sub" style="margin-top:28px">Dans le chat :</p>
+    <table>
+      <thead><tr><th>Commande</th><th>Effet</th></tr></thead>
+      <tbody>
+        <tr><td><code>/help</code></td><td>Affiche les commandes</td></tr>
+        <tr><td><code>/clear</code></td><td>Efface la conversation en mémoire</td></tr>
+        <tr><td><code>/model &lt;nom&gt;</code></td><td>Change de modèle à chaud</td></tr>
+        <tr><td><code>/key &lt;clé&gt;</code></td><td>Change la clé API</td></tr>
+        <tr><td><code>/system &lt;texte&gt;</code></td><td>Prompt système personnalisé</td></tr>
+        <tr><td><code>/config</code></td><td>Affiche la configuration</td></tr>
+        <tr><td><code>/exit</code></td><td>Quitte XozHub</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===================== FAQ ===================== -->
+  <section id="faq">
+    <h2 class="sec">Questions fréquentes</h2>
+    <p class="sec-sub">Tout ce qu'on me demande tout le temps.</p>
+
+    <details>
+      <summary>La commande renvoie « curl : (22) ... returned error: 404 »</summary>
+      <p>Le fichier n'a pas pu être téléchargé. Trois causes possibles : un antivirus ou un
+         proxy qui bloque <code>raw.githubusercontent.com</code>, une connexion instable, ou un
+         dépôt renommé. Utilise la <b>méthode PowerShell</b> (section Commandes) qui passe par
+         un autre chemin réseau, puis réessaie depuis un <b>nouveau</b> cmd.</p>
+    </details>
+
+    <details>
+      <summary>C'est quoi le rapport avec Claude ?</summary>
+      <p>XozHub.GPT est un <b>client</b> : c'est le programme qui tourne sur ta machine et qui affiche
+         l'interface. Le modèle, lui, tourne chez Anthropic (Claude Sonnet 4.6). C'est pour ça qu'il
+         faut une clé API — exactement comme le site que tu m'as montré avec DeepSeek.</p>
+    </details>
+
+    <details>
+      <summary>Où est stockée ma clé API ?</summary>
+      <p>Dans <code>%USERPROFILE%\.xozhub\config.json</code>, sur ton disque. Elle n'est envoyée qu'à
+         l'API du modèle que tu as choisi. Aucun serveur intermédiaire.</p>
+    </details>
+
+    <details>
+      <summary>« xozhub n'est pas reconnu comme commande interne » — que faire ?</summary>
+      <p>C'est Windows, pas XozHub : le PATH ne se rafraîchit pas dans un cmd déjà ouvert.
+         Ferme la fenêtre, ouvre un <b>nouveau</b> cmd et réessaie. Vérifie avec <code>xozhub --version</code>.</p>
+    </details>
+
+    <details>
+      <summary>Erreur 401 / clé invalide</summary>
+      <p>Ta clé est mauvaise ou expirée. Relance <code>xozhub setup</code> pour la ressaisir.</p>
+    </details>
+
+    <details>
+      <summary>Erreur 429 / quota</summary>
+      <p>Tu as dépassé ton quota chez le fournisseur. Attends un peu ou vérifie ton crédit
+         sur la console Anthropic.</p>
+    </details>
+
+    <details>
+      <summary>Est-ce que ça marche avec un autre modèle ?</summary>
+      <p>Oui. <code>/setup</code> puis option <b>2</b> : tu peux pointer vers n'importe quelle API
+         compatible OpenAI (DeepSeek, Groq, Mistral, OpenRouter, un serveur local...).</p>
+    </details>
+
+    <details>
+      <summary>Ça marche sur autre chose que Windows ?</summary>
+      <p>Non, XozHub est fait pour l'invite de commandes Windows (batch + PowerShell natifs).
+         Sur macOS ou Linux, utilise carrément le CLI officiel d'Anthropic.</p>
+    </details>
+
+    <details>
+      <summary>Pourquoi l'interface ne ressemble pas aux captures ?</summary>
+      <p>Le rendu des blocs et des couleurs dépend de la police de ton console. Pour le meilleur
+         résultat, utilise <b>Windows Terminal</b> (police Cascadia Mono ou Consolas).</p>
+    </details>
+  </section>
+
+  <footer>
+    <div class="links">
+      <a href="#install">Installation</a>
+      <a href="#commandes">Commandes</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/Qays67/XozHub" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div>XozHub.GPT — assistant IA en terminal. Pas affilié à Anthropic.</div>
+    <div style="margin-top:6px">Claude est une marque d'Anthropic. XozHub.GPT est un client indépendant.</div>
+  </footer>
+
+</div>
+
+<script>
+/* ---------- tapis de pluie "matrix" cyan / magenta ---------- */
+(function(){
+  const cv = document.getElementById('matrix');
+  const ctx = cv.getContext('2d');
+  let cols, drops, fs = 15;
+  const glyphs = 'XOZHUBGPT01ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿ<>/\\[]{}#$%&*+=';
+  function size(){
+    cv.width = innerWidth; cv.height = innerHeight;
+    cols = Math.floor(cv.width / fs);
+    drops = new Array(cols).fill(0).map(() => Math.random() * -60);
+  }
+  function draw(){
+    ctx.fillStyle = 'rgba(5,6,10,0.09)';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.font = fs + 'px monospace';
+    for (let i = 0; i < cols; i++){
+      const ch = glyphs[Math.floor(Math.random() * glyphs.length)];
+      ctx.fillStyle = Math.random() > 0.85 ? '#ff2fd0' : '#00f0ff';
+      ctx.globalAlpha = Math.random() * 0.7 + 0.3;
+      ctx.fillText(ch, i * fs, drops[i] * fs);
+      ctx.globalAlpha = 1;
+      if (drops[i] * fs > cv.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    }
+  }
+  size(); setInterval(draw, 58);
+  addEventListener('resize', size);
+})();
+
+/* ---------- effet machine à écrire ---------- */
+(function(){
+  const el = document.getElementById('typed');
+  const lines = [
+    'Tu poses une question, il repond.',
+    'Tu colles une erreur, il la corrige.',
+    'Tu veux un script, il l ecrit.'
+  ];
+  let li = 0, ci = 0, del = false;
+  function tick(){
+    const txt = lines[li];
+    el.textContent = del ? txt.slice(0, --ci) : txt.slice(0, ++ci);
+    let wait = del ? 26 : 46;
+    if (!del && ci === txt.length){ del = true; wait = 1700; }
+    else if (del && ci === 0){ del = false; li = (li + 1) % lines.length; wait = 320; }
+    setTimeout(tick, wait);
+  }
+  tick();
+})();
+
+/* ---------- commandes d'installation auto-adaptatives ---------- */
+/*  Si la page est servie par un vrai site (http/https), les fichiers
+    install.bat / install.ps1 / uninstall.ps1 sont pris sur le meme domaine
+    que cette page : le site fonctionne donc sur n'importe quel hebergeur
+    (GitHub Pages, Netlify, un dossier partage...) sans rien modifier ici. */
+(function(){
+  const GH = 'https://raw.githubusercontent.com/Qays67/XozHub/main';
+  let base = GH;
+  if (location.protocol === 'http:' || location.protocol === 'https:'){
+    base = (location.origin + location.pathname.replace(/[^/]*$/, '')).replace(/\/+$/, '');
+  }
+  const CMD_BAT = 'curl -fsSL ' + base + '/install.bat -o "%TEMP%\\xozhub-install.bat" && "%TEMP%\\xozhub-install.bat" ' + base;
+  const CMD_PS  = 'powershell -NoProfile -ExecutionPolicy Bypass -c "$env:XOZHUB_BASE=\'' + base + '\'; irm ' + base + '/install.ps1 | iex"';
+  const CMD_UN  = 'powershell -NoProfile -ExecutionPolicy Bypass -c "irm ' + base + '/uninstall.ps1 | iex"';
+
+  function setCmd(id, text){
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (el.querySelector('.p')){
+      el.innerHTML = '<span class="p">&gt;</span> ' +
+        text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } else {
+      el.textContent = text;
+    }
+  }
+  ['maincmd', 'installcmd', 'c1', 'c6'].forEach(id => setCmd(id, CMD_BAT));
+  setCmd('c2', CMD_PS);
+  setCmd('c7', CMD_UN);
+})();
+
+/* ---------- boutons copier ---------- */
+document.querySelectorAll('button.copy').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const src = document.getElementById(btn.dataset.copy);
+    const txt = src.innerText.replace(/^\s*>\s*/, '').trim();
+    try {
+      await navigator.clipboard.writeText(txt);
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = txt; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+    }
+    const old = btn.textContent;
+    btn.textContent = 'COPIE OK'; btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = old; btn.classList.remove('ok'); }, 1500);
+  });
+});
+
+/* ---------- demo animee du terminal ---------- */
+(function(){
+  const box = document.getElementById('demo');
+  const script = [
+    ['', 120],
+    ['   ██████  ██████  ██████  ██  ██  ██  ██  ██████   ', 'c', 40],
+    ['  ██    ██ ██  ██  ██    ██ ██  ██ ██  ██  ██    ██  ', 'c', 40],
+    ['  ██    ██ ██  ██  ██    ██ ██████ ████████ ██████   ', 'm', 40],
+    ['   ██████   ████   ██████  ██  ██ ██    ██ ██    ██  ', 'm', 40],
+    ['', 80],
+    ['                  X O Z H U B . G P T   v1.0.0', 'd', 60],
+    ['', 200],
+    ['  [ OK ]  Initialisation du noyau XozHub', 'g', 90],
+    ['  [ OK ]  Chargement du module claude-sonnet-4-6', 'g', 90],
+    ['  [ OK ]  Chiffrement du canal de discussion', 'g', 90],
+    ['  [ OK ]  Acces root accorde', 'm', 200],
+    ['', 200],
+    ['  root@xozhub:~$ ', 'm', 500],
+    ['comment je liste les fichiers de plus de 100 Mo en powershell ?', 'u', 800],
+    ['', 200],
+    ['  XOZHUB.GPT >>', 'm', 400],
+    ['', 100],
+    ['  Avec Get-ChildItem et un filtre sur Length :', 'u', 500],
+    ['', 160],
+    ['    Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |', 'g', 60],
+    ['      Where-Object { $_.Length -gt 100MB } |', 'g', 60],
+    ['      Sort-Object Length -Descending |', 'g', 60],
+    ['      Select-Object FullName, @{n="Mo";e={[math]::Round($_.Length/1MB,1)}}', 'g', 500],
+    ['', 160],
+    ['  Ajoute -Force pour inclure les fichiers caches.', 'u', 600],
+    ['', 200],
+    ['  root@xozhub:~$ ', 'm', 0]
+  ];
+  let i = 0;
+  function next(){
+    if (i >= script.length){ setTimeout(() => { box.innerHTML = ''; i = 0; next(); }, 5000); return; }
+    const [txt, cls, delay] = script[i++];
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.textContent = txt || '\u00a0';
+    box.appendChild(div);
+    while (box.childElementCount > 22) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+    setTimeout(next, delay);
+  }
+  next();
+})();
+</script>
+</body>
+</html>
